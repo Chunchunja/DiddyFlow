@@ -794,6 +794,46 @@
                 transform: translateX(0);
             }
         }
+
+        .diddy-popup {
+            position: fixed;
+            font-size: 3rem;
+            font-weight: 900;
+            color: var(--primary);
+            text-shadow: 0 0 20px rgba(255, 107, 74, 0.8),
+                         0 0 40px rgba(255, 107, 74, 0.6),
+                         0 4px 8px rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            pointer-events: none;
+            animation: diddyBounce 0.6s ease-out;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        @keyframes diddyBounce {
+            0% {
+                opacity: 0;
+                transform: scale(0) rotate(-15deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2) rotate(5deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
+        @keyframes diddyFadeOut {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.5) translateY(-50px);
+            }
+        }
     </style>
 </head>
 <body>
@@ -849,15 +889,15 @@
                 <div class="settings-grid">
                     <div class="setting-item">
                         <span class="setting-label">Pomodoro (min)</span>
-                        <input type="number" class="setting-input" id="pomodoroTime" value="25" min="1" max="60">
+                        <input type="number" class="setting-input" id="pomodoroTime" value="25" min="0.1" max="60" step="0.1">
                     </div>
                     <div class="setting-item">
                         <span class="setting-label">Short Break (min)</span>
-                        <input type="number" class="setting-input" id="shortBreakTime" value="5" min="1" max="30">
+                        <input type="number" class="setting-input" id="shortBreakTime" value="5" min="0.1" max="30" step="0.1">
                     </div>
                     <div class="setting-item">
                         <span class="setting-label">Long Break (min)</span>
-                        <input type="number" class="setting-input" id="longBreakTime" value="15" min="1" max="60">
+                        <input type="number" class="setting-input" id="longBreakTime" value="15" min="0.1" max="60" step="0.1">
                     </div>
                     <div class="setting-item">
                         <span class="setting-label">Auto-start next session</span>
@@ -1104,13 +1144,13 @@
 
             switch(currentMode) {
                 case 'pomodoro':
-                    timeLeft = parseInt(pomodoroTimeInput.value) * 60;
+                    timeLeft = Math.round(parseFloat(pomodoroTimeInput.value) * 60);
                     break;
                 case 'short':
-                    timeLeft = parseInt(shortBreakTimeInput.value) * 60;
+                    timeLeft = Math.round(parseFloat(shortBreakTimeInput.value) * 60);
                     break;
                 case 'long':
-                    timeLeft = parseInt(longBreakTimeInput.value) * 60;
+                    timeLeft = Math.round(parseFloat(longBreakTimeInput.value) * 60);
                     break;
             }
 
@@ -1133,10 +1173,11 @@
 
         function onTimerComplete() {
             playNotificationSound();
+            showDiddyPopups();
 
             if (currentMode === 'pomodoro') {
                 completedSessions++;
-                totalMinutes += parseInt(pomodoroTimeInput.value);
+                totalMinutes += Math.round(parseFloat(pomodoroTimeInput.value));
                 streak++;
                 updateStats();
 
@@ -1170,22 +1211,86 @@
         }
 
         function playNotificationSound() {
-            // Create a simple beep sound using Web Audio API
+            // Create the "DIDDY" sound effect using Web Audio API
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
 
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
+            // First note - "DI"
+            const osc1 = audioContext.createOscillator();
+            const gain1 = audioContext.createGain();
+            osc1.connect(gain1);
+            gain1.connect(audioContext.destination);
+            osc1.frequency.value = 523.25; // C5
+            osc1.type = 'square';
+            gain1.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+            osc1.start(audioContext.currentTime);
+            osc1.stop(audioContext.currentTime + 0.15);
 
-            oscillator.frequency.value = 800;
-            oscillator.type = 'sine';
+            // Second note - "DDY"
+            const osc2 = audioContext.createOscillator();
+            const gain2 = audioContext.createGain();
+            osc2.connect(gain2);
+            gain2.connect(audioContext.destination);
+            osc2.frequency.value = 659.25; // E5
+            osc2.type = 'square';
+            gain2.gain.setValueAtTime(0, audioContext.currentTime + 0.15);
+            gain2.gain.setValueAtTime(0.3, audioContext.currentTime + 0.16);
+            gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+            osc2.start(audioContext.currentTime + 0.15);
+            osc2.stop(audioContext.currentTime + 0.4);
 
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            // Bass drop effect
+            const bass = audioContext.createOscillator();
+            const bassGain = audioContext.createGain();
+            bass.connect(bassGain);
+            bassGain.connect(audioContext.destination);
+            bass.frequency.value = 130.81; // C3
+            bass.type = 'sine';
+            bassGain.gain.setValueAtTime(0, audioContext.currentTime + 0.4);
+            bassGain.gain.setValueAtTime(0.4, audioContext.currentTime + 0.41);
+            bassGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8);
+            bass.start(audioContext.currentTime + 0.4);
+            bass.stop(audioContext.currentTime + 0.8);
+        }
 
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.5);
+        function showDiddyPopups() {
+            const popupCount = 20; // Number of popups
+            const duration = 10000; // 10 seconds
+            const interval = 500; // New popup every 500ms
+
+            let count = 0;
+            const popupInterval = setInterval(() => {
+                if (count >= popupCount) {
+                    clearInterval(popupInterval);
+                    return;
+                }
+
+                const popup = document.createElement('div');
+                popup.className = 'diddy-popup';
+                popup.textContent = 'DIDDY!';
+
+                // Random position
+                const x = Math.random() * (window.innerWidth - 200);
+                const y = Math.random() * (window.innerHeight - 100);
+                popup.style.left = x + 'px';
+                popup.style.top = y + 'px';
+
+                // Random rotation
+                const rotation = (Math.random() - 0.5) * 30;
+                popup.style.transform = `rotate(${rotation}deg)`;
+
+                document.body.appendChild(popup);
+
+                // Remove popup after animation
+                setTimeout(() => {
+                    popup.style.animation = 'diddyFadeOut 0.5s ease-out forwards';
+                    setTimeout(() => {
+                        popup.remove();
+                    }, 500);
+                }, duration - (count * interval));
+
+                count++;
+            }, interval);
         }
 
         function showToast(message) {
